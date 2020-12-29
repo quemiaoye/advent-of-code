@@ -1,0 +1,18 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/hazelque/Desktop/advent-of-code/day-4/main.cpp
+iostream
+-
+fstream
+-
+vector
+-
+unordered_map
+-
+
