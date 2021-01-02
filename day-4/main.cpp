@@ -1,7 +1,10 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <regex>
+#include <list>
 #include <unordered_map>
+#include <unordered_set>
 
 std::unordered_map<std::string, std::string> processEntry(std::vector<std::string> entry) {
     std::vector<std::string> tokens;
@@ -38,33 +41,42 @@ bool passportHasEnoughFields(std::unordered_map<std::string, std::string> entry)
     return (numFields == 7 && !cid_present) || numFields == 8;
 }
 
-bool isValidNumber(std::string& value, int start, int end) {
-    int year = std::stoi(value);
-    return year >= start && year <= end;
-}
+const std::unordered_map<std::string, const std::function<bool(const std::string &)>> validator{
+        {"byr", [](const std::string &value) -> bool { return std::stoi(value) >= 1920 && std::stoi(value) <= 2002; }},
+        {"iyr", [](const std::string &value) -> bool { return std::stoi(value) >= 2010 && std::stoi(value) <= 2020; }},
+        {"eyr", [](const std::string &value) -> bool { return std::stoi(value) >= 2020 && std::stoi(value) <= 2030; }},
+        {"hgt", [](const std::string &value) -> bool {
+            std::smatch match;
+            if (regex_match(value.cbegin(), value.cend(), match, std::regex("([0-9]+)(cm|in)"))) {
+                if (match[2].str() == "cm") {
+                    int height = std::stoi(match[1].str());
+                    return height >= 150 && height <= 193;
+                }
+                if (match[2].str() == "in") {
+                    int height = std::stoi(match[1].str());
+                    return height >= 59 && height <= 76;
+                }
+            }
+            return false;
+        }},
+        {"hcl", [](const std::string &value) -> bool {
+            return regex_match(value.cbegin(), value.cend(), std::regex("#([0-9]|[a-f]){6}"));
+        }},
+        {"ecl", [](const std::string &value) -> bool {
+            const std::list<std::string> valid_eye_colors{"amb", "blu", "brn", "gry", "grn", "hzl", "oth"};
+            return std::find(valid_eye_colors.cbegin(), valid_eye_colors.cend(), value) != valid_eye_colors.end();
+        }},
+        {"pid", [](const std::string &value) -> bool {
+            return regex_match(value.cbegin(), value.cend(), std::regex("[0-9]{9}"));
+        }},
+};
 
-bool isValidHeight(std::string& height) {
-    std::string num;
-    std::string unit;
-    for (char cur : height) {
-        if (isdigit(cur)) num.push_back(cur);
-        else unit.push_back(cur);
-    }
-    if (unit != "cm" || unit != "in") return false;
-    if (unit == "cm") {
-        return isValidNumber(num, 150, 193);
-    }
-    if (unit == "in") {
-        return isValidNumber(num, 59, 76);
-    }
-}
 
 bool isValidPassport(std::unordered_map<std::string, std::string> entry) {
-    bool is_valid = false;
-    if (!isValidNumber(entry.at("byr"), 1920, 2002)) return is_valid;
-    if (!isValidNumber(entry.at("iyr"), 2010, 2020)) return is_valid;
-    if (!isValidNumber(entry.at("iyr"), 2020, 2030)) return is_valid;
-    if (!isValidHeight(entry.at("hgt"))) return is_valid;
+    for (const auto &field : entry) {
+        if (field.first == "cid") continue;
+        if (!validator.at(field.first)(field.second)) return false;
+    }
     return true;
 }
 
